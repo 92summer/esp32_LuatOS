@@ -72,8 +72,8 @@ sys.taskInit(function()
     ----------------------------
     if rtos.bsp():startsWith("ESP32") then
         -- wifi 联网, ESP32系列均支持
-        local ssid = "耶耶"
-        local password = "12345687!"
+        local ssid = "换成你的WiFi名"
+        local password = "换成你的密码"
         -- log.info("wifi", ssid, password)
         -- TODO 改成esptouch配网
         wlan.init()
@@ -102,7 +102,7 @@ sys.taskInit(function()
     local client_id,user_name,password = iotauth.iotda(device_id,device_secret)
     log.info("iotda",client_id,user_name,password)
 
-    mqttc = mqtt.create(nil,"192.168.1.103", 1883)
+    mqttc = mqtt.create(nil,"192.168.1.103", 1883) --换成你的mqtt服务器地址
 
     mqttc:auth(client_id,user_name,password)
     mqttc:keepalive(30) -- 默认值240s
@@ -254,7 +254,7 @@ sys.taskInit(function()
     sys.wait(10000)
     while 1 do
         --心知天气api
-        local key = "STxpmSa4oTixXmbym"
+        local key = "换成你的私钥"
 
         --获取实时天气
         local url = "https://api.seniverse.com/v3/weather/now.json?key=" .. key .. "&location=".. city .."&language=zh-Hans&unit=c"
