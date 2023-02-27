@@ -8,4 +8,6 @@
 | 继电器模块 | 双路5V可选高低电平触发                  |
 
 # v1.1  
-新加了一个mqtt客户端用于接收luatos/city消息，更改要显示的城市天气信息
+新加了一个mqtt客户端用于接收luatos/city消息，更改要显示的城市天气信息  
+例如![Screenrecorder-2023-02-27-13-05-13-952](https://user-images.githubusercontent.com/80613363/221480480-07d72463-795e-42fd-8bf9-89e2f40a01c4.gif)
+
