@@ -379,12 +379,12 @@ end
 sys.taskInit(function()
     sys.wait(12000)
     local key = "你的私钥"
-    local url = "https://api.seniverse.com/v3/weather/daily.json?key=" .. key .. "&location=".. city .."&language=zh-Hans&unit=c&start=0&days=5"
-    log.info("URL", url)
+    
     while 1 do
         ::continue::
         --获取天气预报（今明）
-
+        local url = "https://api.seniverse.com/v3/weather/daily.json?key=" .. key .. "&location=".. city .."&language=zh-Hans&unit=c&start=0&days=5"
+        log.info("URL", url)
         local code, headers, body = http.request("GET", url).wait()
         --code 200为请求成功，返回的body为json格式
         -- log.info("http.get", code, headers, body)
