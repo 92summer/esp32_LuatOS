@@ -9,5 +9,5 @@
 
 # v1.1  
 新加了一个mqtt客户端用于接收luatos/city消息，更改要显示的城市天气信息  
-例如![Screenrecorder-2023-02-27-13-05-13-952](https://user-images.githubusercontent.com/80613363/221480480-07d72463-795e-42fd-8bf9-89e2f40a01c4.gif)
+![Screenrecorder-2023-02-27-13-05-13-952](https://user-images.githubusercontent.com/80613363/221519840-444c480d-fc87-42b1-a8d2-44a83a3bf06f.gif)
 
