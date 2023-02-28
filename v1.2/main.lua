@@ -71,7 +71,7 @@ city = url_encode(city)
 local device_id     = "esp32"    --改为你自己的设备id
 local device_secret = "132"    --改为你自己的设备密钥
 local mqttc = nil
-local light_status = "on"
+local light_status = "off"
 local last_status = "off"  --避免每次赋值io产生高频振荡信号
 local led_status = 1 --1为初始化状态：双闪 --2未连接broker:常亮 --3已连接并开始收发:单闪
 sys.taskInit(function()
@@ -378,8 +378,8 @@ end
 
 sys.taskInit(function()
     sys.wait(12000)
-    local key = "你的私钥"
-    
+    local key = " "
+
     while 1 do
         ::continue::
         --获取天气预报（今明）
@@ -401,28 +401,32 @@ sys.taskInit(function()
         log.info("http.get", "天气预报请求成功")
         --解码为table格式
         local tab = json.decode(body)
-
+        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
         lcd.setFont(lcd.font_opposansm12_chinese)
         lcd.drawStr(15,20, getdate( tab, "today" ), 0x10ff)
 
         lcd.setFont(lcd.font_opposansm12_chinese)
         lcd.drawStr(0,40,"--今日天气")
         display_dailyweather( tab, "today" )
-        sys.wait(8000)
-        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
+        -- sys.wait(8000)
+        local ret, data = sys.waitUntil("city_change", 8000)
+        if ret then
+            goto continue
+        end
 
+        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
         lcd.setFont(lcd.font_opposansm12_chinese)
         lcd.drawStr(0,40,"--明日天气")
         display_dailyweather( tab, "tomorrow" )
-        sys.wait(8000)
-        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
+        sys.waitUntil("city_change", 8000)
+            goto continue
 
         -- sys.wait(300000) --等待5分钟
-        -- sys.waitUntil("city_change", 300000)
-        --     goto continue
+
         -- sys.subscribe("city_change", function()
         --     log.info("sys", "city_change")
         -- end)
+
     end
 end)
 -- 用户代码已结束---------------------------------------------
