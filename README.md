@@ -15,5 +15,5 @@
 增加显示今日天气  
 ![VID_20230227_183039](https://user-images.githubusercontent.com/80613363/221546104-d55a8085-d61d-47d5-b08a-ee7a9179465c.gif)  
 
-# v1.2  
+# v1.3  
 优化httpget问题，减少get次数  
