@@ -13,6 +13,12 @@ _G.sys = require("sys")
 --[[特别注意, 使用http库需要下列语句]]
 _G.sysplus = require("sysplus")
 
+--添加硬狗防止程序卡死
+if wdt then
+    wdt.init(9000)--初始化watchdog设置为9s
+    sys.timerLoopStart(wdt.feed, 3000)--3s喂一次狗
+end
+
 -- UI带屏的项目一般不需要低功耗了吧, 设置到最高性能
 if mcu then
     pm.request(pm.NONE)
@@ -56,24 +62,6 @@ lcd.init("st7735s",{port = "device",pin_dc = pin_dc, pin_pwr = bl, pin_rst = pin
 
 -- 不在上述内置驱动的, 看demo/lcd_custom
 
-local city = "武汉"
-local function url_encode(str) --utf-8转网址编码
-    if (str) then
-        str = string.gsub (str, "\n", "\r\n")
-        str = string.gsub (str, "([^%w ])",
-            function (c) return string.format ("%%%02X", string.byte(c)) end)
-        str = string.gsub (str, " ", "+")
-    end
-    return str
-end
-city = url_encode(city)
-
-local device_id     = "esp32"    --改为你自己的设备id
-local device_secret = "132"    --改为你自己的设备密钥
-local mqttc = nil
-local light_status = "off"
-local last_status = "off"  --避免每次赋值io产生高频振荡信号
-local led_status = 1 --1为初始化状态：双闪 --2未连接broker:常亮 --3已连接并开始收发:单闪
 sys.taskInit(function()
     -----------------------------
     -- 统一联网函数, 可自行删减
@@ -107,6 +95,30 @@ sys.taskInit(function()
         sys.waitUntil("IP_READY", 30000)
     end
 
+end)
+
+
+local city = "武汉"
+local function url_encode(str) --utf-8转网址编码
+    if (str) then
+        str = string.gsub (str, "\n", "\r\n")
+        str = string.gsub (str, "([^%w ])",
+            function (c) return string.format ("%%%02X", string.byte(c)) end)
+        str = string.gsub (str, " ", "+")
+    end
+    return str
+end
+city = url_encode(city)
+
+
+local light_status = "off"
+local last_status = "off"  --避免每次赋值io产生高频振荡信号
+local led_status = 1 --1为初始化状态：双闪 --2未连接broker:常亮 --3已连接并开始收发:单闪
+sys.taskInit(function()
+    sys.waitUntil("IP_READY", 30000)
+    local device_id     = "esp32"    --改为你自己的设备id
+    local device_secret = "132"    --改为你自己的设备密钥
+    local mqttc = nil
     local client_id,user_name,password = iotauth.iotda(device_id,device_secret)
     log.info("iotda",client_id,user_name,password)
 
@@ -135,7 +147,7 @@ sys.taskInit(function()
                 light_status = nil
             end
         elseif event == "sent" then
-            led_status = 3
+
             log.info("mqtt", "sent", "pkgid", data)
         end
     end)
@@ -147,6 +159,8 @@ sys.taskInit(function()
     while true do
         if not mqttc:ready() then
             led_status = 2
+        else
+            led_status = 3
         end
         -- mqttc自动处理重连
         local ret, topic, data, qos = sys.waitUntil("mqtt_pub", 30000)
@@ -162,12 +176,13 @@ end)
 
 --发布灯状态
 sys.taskInit(function()
+    sys.waitUntil("IP_READY", 30000)
 	local topic = "luatos/light_status"
 	local payload = nil
 	local qos = 1
-    local result, data = sys.waitUntil("IP_READY")
+    local result, _ = sys.waitUntil("IP_READY")
     while true do --7秒发一次灯的状态
-        sys.wait(7000)
+        sys.wait(18000)
         if light_status == "on" then
             payload = "Lights On!"
         elseif light_status == "off" then
@@ -209,22 +224,24 @@ end)
 
 --点灯
 sys.taskInit(function()
+    gpio.setup(12,gpio.HIGH)
+    gpio.setup(13,gpio.HIGH)
     while true do
         if led_status == 1 then
-            gpio.setup(12,gpio.HIGH)
-            gpio.setup(13,gpio.HIGH)
+            gpio.set(12,gpio.HIGH)
+            gpio.set(13,gpio.HIGH)
             sys.wait(100)
-            gpio.setup(12,gpio.LOW)
-            gpio.setup(13,gpio.LOW)
+            gpio.set(12,gpio.LOW)
+            gpio.set(13,gpio.LOW)
             sys.wait(100)
         elseif led_status == 2 then
-            gpio.setup(12,gpio.HIGH)
-            gpio.setup(13,gpio.HIGH)
+            gpio.set(12,gpio.HIGH)
+            gpio.set(13,gpio.HIGH)
             sys.wait(100)
         elseif led_status == 3 then
-            gpio.setup(13,gpio.HIGH)
+            gpio.set(13,gpio.HIGH)
             sys.wait(700)
-            gpio.setup(13,gpio.LOW)
+            gpio.set(13,gpio.LOW)
             sys.wait(500)
         end
     end
@@ -233,7 +250,10 @@ end)
 
 sys.taskInit(function()
     sys.waitUntil("IP_READY", 30000)
-    local mqttc2
+    -- sys.wait(2000)
+    local device_id     = "esp32_2"    --改为你自己的设备id
+    local device_secret = "132"    --改为你自己的设备密钥
+    local mqttc2 = nil
     local client_id,user_name,password = iotauth.iotda(device_id,device_secret)
     log.info("iotda",client_id,user_name,password)
 
@@ -248,18 +268,18 @@ sys.taskInit(function()
     --接收城市消息，改变显示屏上的显示
     mqttc2:on(function(mqtt_client, event, data, payload)
         -- 用户自定义代码
-        log.info("mqtt", "event:", event, mqtt_client, data, payload)
+        log.info("mqtt2", "event:", event, mqtt_client, data, payload)
         if event == "conack" then
             led_status = 1
-            sys.publish("mqtt_conack")
+            sys.publish("mqtt2_conack")
             mqtt_client:subscribe("luatos/city")
         elseif event == "recv" then
             log.info("在主题", data, "接收到消息:", payload)
             city = url_encode(payload)
             sys.publish("city_change")
         elseif event == "sent" then
-            led_status = 3
-            log.info("mqtt", "sent", "pkgid", data)
+
+            log.info("mqtt2", "sent", "pkgid", data)
         end
     end)
 
@@ -268,6 +288,8 @@ sys.taskInit(function()
     while true do
         if not mqttc2:ready() then
             led_status = 2
+        else
+            led_status = 3
         end
         -- mqttc自动处理重连
         local ret, topic, data, qos = sys.waitUntil("mqtt_pub", 30000)
@@ -310,21 +332,25 @@ end
 
 
 sys.taskInit(function()
-
-    sys.wait(9000)
+    sys.waitUntil("IP_READY", 30000)
+    sys.wait(5000)
     local key = "STxpmSa4oTixXmbym"
+    local code, headers, body
     while 1 do
-        ::continue::
+        -- ::continue::
         lcd.clear()
         --获取实时天气
         local url = "https://api.seniverse.com/v3/weather/now.json?key=" .. key .. "&location=".. city .."&language=zh-Hans&unit=c"
         log.info("URL", url)
-        local code, headers, body = http.request("GET", url).wait()
+        code, headers, body = http.request("GET", url).wait()
         --code 200为请求成功，返回的body为json格式
         -- log.info("http.get", code, headers, body)
         while code ~= 200 do
             code, headers, body = http.request("GET", url).wait()
-            log.info("http.get", "ErrCode ", code)
+            if code == 200 then
+                break
+            end
+            log.info("实时http.get", "ErrCode ", code)
             gpio.setup(12,gpio.HIGH)
             gpio.setup(13,gpio.HIGH)
             sys.wait(100)
@@ -351,7 +377,7 @@ sys.taskInit(function()
         -- log.info("lua", rtos.meminfo("lua"))
         -- sys.wait(300000) --等待5分钟 300000
         sys.waitUntil("city_change", 300000)
-            goto continue
+            -- goto continue
     end
 end)
 
@@ -381,35 +407,26 @@ local function getdate( tab, str )
 end
 
 sys.taskInit(function()
-    -- sys.wait(12000)
-    sys.wait(500)
-    -- lcd.showImage(25,30,"/luadb/logo.jpg")
-    sys.wait(10500)
-    -- lcd.clear()
-    -- for j = 0,3 do
-    --     for i = 0, 13 do
-    --         lcd.showImage(25,30,"/luadb/R"..i..".jpg")
-    --         sys.wait(15)
-    --     end
-    -- end
-
+    sys.waitUntil("IP_READY", 30000)
+    sys.wait(6000)
     local key = "STxpmSa4oTixXmbym"
-
+    local code, headers, body
     while 1 do
-        ::continue::
         --获取天气预报（今明）
-
         local url = "https://api.seniverse.com/v3/weather/daily.json?key=" .. key .. "&location=".. city .."&language=zh-Hans&unit=c&start=0&days=5"
-        local ret, data = sys.waitUntil("reget", 100)
-        if ret then
-            log.info("URL", url)
-            local code, headers, body = http.request("GET", url).wait()
-        end
+
+        log.info("URL", url)
+        code, headers, body = http.request("GET", url).wait()
+
+
         --code 200为请求成功，返回的body为json格式
         -- log.info("http.get", code, headers, body)
         while code ~= 200 do
             code, headers, body = http.request("GET", url).wait()
-            log.info("http.get", "ErrCode ", code)
+            if code == 200 then
+                break
+            end
+            log.info("预报http.get", "ErrCode ", code)
             gpio.setup(12,gpio.HIGH)
             gpio.setup(13,gpio.HIGH)
             sys.wait(100)
@@ -420,25 +437,33 @@ sys.taskInit(function()
         log.info("http.get", "天气预报请求成功")
         --解码为table格式
         local tab = json.decode(body)
-        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
-        lcd.setFont(lcd.font_opposansm12_chinese)
-        lcd.drawStr(15,20, getdate( tab, "today" ), 0x10ff)
 
-        lcd.setFont(lcd.font_opposansm12_chinese)
-        lcd.drawStr(0,40,"--今日天气")
-        display_dailyweather( tab, "today" )
-        -- sys.wait(8000)
-        local ret, data = sys.waitUntil("city_change", 8000)
-        if ret then
-            goto continue
+
+        local ret = false
+        while ret == false do
+            lcd.fill(0,26,128,105,0xffff) -- 区域清屏
+            lcd.setFont(lcd.font_opposansm12_chinese)
+            lcd.drawStr(15,20, getdate( tab, "today" ), 0x10ff)
+            lcd.setFont(lcd.font_opposansm12_chinese)
+            lcd.drawStr(0,40,"--今日天气")
+            display_dailyweather( tab, "today" )
+            -- sys.wait(8000)
+            ret, _ = sys.waitUntil("reget", 8000)
+            if ret then
+                break
+            end
+
+            lcd.fill(0,26,128,105,0xffff) -- 区域清屏
+            lcd.setFont(lcd.font_opposansm12_chinese)
+            lcd.drawStr(0,40,"--明日天气")
+            display_dailyweather( tab, "tomorrow" )
+            ret, _ = sys.waitUntil("reget", 8000)
+            if ret then
+                break
+            end
         end
 
-        lcd.fill(0,26,128,105,0xffff) -- 区域清屏
-        lcd.setFont(lcd.font_opposansm12_chinese)
-        lcd.drawStr(0,40,"--明日天气")
-        display_dailyweather( tab, "tomorrow" )
-        sys.waitUntil("city_change", 8000)
-            goto continue
+
 
         -- sys.wait(300000) --等待5分钟
 
