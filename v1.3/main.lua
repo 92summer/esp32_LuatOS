@@ -49,7 +49,7 @@ end
 local spi_id,pin_reset,pin_dc,pin_cs,bl = lcd_pin()
 
 -- v0006及以后版本可用pin方式, 请升级到最新固件 https://gitee.com/openLuat/LuatOS/releases
-spi_lcd = spi.deviceSetup(spi_id,pin_cs,0,0,8,2000000,spi.MSB,1,0)
+spi_lcd = spi.deviceSetup(spi_id,pin_cs,0,0,8,80000000,spi.MSB,1,0) -- esp32c3的spi主模式最高速率为80M
 
 --[[ 此为合宙售卖的1.8寸TFT LCD LCD 分辨率:128X160 屏幕ic:st7735 购买地址:https://item.taobao.com/item.htm?spm=a1z10.5-c.w4002-24045920841.19.6c2275a1Pa8F9o&id=560176729178]]
 -- direction：lcd屏幕方向 0:0° 1:180° 2:270° 3:90°
